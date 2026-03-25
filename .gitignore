@@ -1,0 +1,12 @@
+# Bỏ qua môi trường ảo và bộ nhớ đệm của Python (Backend)
+venv/
+__pycache__/
+*.pyc
+
+# Bỏ qua thư viện của Node.js (Frontend)
+node_modules/
+dist/
+
+# Bỏ qua các file cấu hình hệ điều hành và file môi trường
+.DS_Store
+.env
