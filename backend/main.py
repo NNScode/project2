@@ -1,8 +1,14 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-app = FastAPI(title="Hệ thống điểm danh thi trực tuyến tích hợp CCCD", version="1.0")
+from database import engine, get_db
+import models
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Hệ thống điểm danh thi trực tuyến tích hợp CCCD")
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,17 +18,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-def read_root():
-    return {"message": "Backend FastAPI đang hoạt động!"}
-
-@app.post("/api/v1/attendance/verify-cccd")
-async def verify_cccd(file: UploadFile = File(...)):
-    contents = await file.read()
+# API Test Database: Lấy danh sách thí sinh
+@app.get("/api/v1/students")
+def get_students(db: Session = Depends(get_db)):
+    students = db.query(models.Student).all()
     return {
         "status": "success",
-        "message": "Đã nhận ảnh thành công, đang chờ AI xử lý...",
-        "filename": file.filename
+        "total": len(students),
+        "data": students
     }
 
 if __name__ == "__main__":
