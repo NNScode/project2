@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-app = FastAPI(title="Hệ thống Điểm danh Thi trực tuyến", version="1.0")
+app = FastAPI(title="Hệ thống điểm danh thi trực tuyến tích hợp CCCD", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
