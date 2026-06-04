@@ -1,0 +1,41 @@
+---
+description: Quy tắc React/Tailwind cho frontend FacePass
+globs: frontend/**/*.{jsx,js}
+alwaysApply: false
+---
+
+# Frontend — React + Tailwind
+
+## Màu sắc & Component classes
+Dùng CSS variables, KHÔNG dùng class Tailwind màu trực tiếp:
+```jsx
+// ✅
+className="text-[var(--primary-600)] bg-[var(--accent-bg)]"
+// ❌
+className="text-blue-600 bg-blue-50"
+```
+Classes tái sử dụng: `.card`, `.btn-primary-soft`, `.btn-ghost`, `.input-field`
+
+## Routing (react-router-dom v6)
+- Layout: `<Outlet />` trong `MainLayout`, routes trong `App.jsx`
+- Bảo vệ route: `<ProtectedRoute roles={['ADMIN']}>` 
+- Navigate: `<Link to="/path">`, `useNavigate()`, không dùng `window.location`
+
+## API calls
+```js
+// api/index.js — mọi call qua Axios client tại /api
+export const getExams = () => client.get('/exams/');
+export const updateExam = (id, data) => client.put(`/exams/${id}`, data);
+```
+
+## Pattern trang CRUD
+```jsx
+const [items, setItems] = useState([]);
+const [modalOpen, setModalOpen] = useState(false);
+// load với useEffect → modal create/edit → notice 4s auto-dismiss
+```
+
+## Quy tắc nhỏ
+- Không dùng `useEffect` deps array rỗng nếu có cleanup cần thiết
+- Modal: `onClick={closeModal}` trên overlay, `stopPropagation` trên card bên trong
+- Datetime input: `type="datetime-local"`, convert sang ISO trước khi gửi API

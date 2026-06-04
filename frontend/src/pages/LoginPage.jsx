@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-none bg-white flex items-center justify-center px-4 py-10 sm:px-6">
+    <div className="min-h-screen w-full max-w-none bg-[var(--bg)] flex items-center justify-center px-4 py-10 sm:px-6">
         <div className="w-full max-w-[420px]">
           <div className="mb-8 flex flex-col items-center text-center">
             <Logo size="xl" />
@@ -57,9 +57,6 @@ export default function LoginPage() {
           <div className="card border-[var(--border)] bg-white p-7 shadow-[var(--shadow-md)] sm:p-8">
             <div className="mb-6 text-left">
               <h2 className="text-lg font-semibold text-[var(--text-h)] m-0">Đăng nhập</h2>
-              <p className="mt-1 text-sm text-[var(--text-muted)] m-0">
-                Nhập tài khoản để tiếp tục
-              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 text-left" noValidate>
@@ -150,10 +147,6 @@ export default function LoginPage() {
               </button>
             </form>
           </div>
-
-          <p className="mt-6 text-center text-xs text-[var(--text-muted)] m-0">
-            Gặp sự cố? Liên hệ quản trị viên hệ thống.
-          </p>
         </div>
     </div>
   );

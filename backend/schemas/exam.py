@@ -14,6 +14,12 @@ class ExamCreate(ExamBase):
     pass
 
 
+class ExamUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[ExamStatus] = None
+
+
 class ExamRead(ExamBase):
     id: int
     create_at: datetime

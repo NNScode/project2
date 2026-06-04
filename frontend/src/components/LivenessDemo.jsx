@@ -41,15 +41,15 @@ export default function LivenessDemo() {
       canvasCtx.save();
       canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
 
-      if (results.multiFaceLandmarks) {
-        for (const landmarks of results.multiFaceLandmarks) {
-          drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {
-            color: '#0284c7',
-            lineWidth: 1,
-          });
-        }
-      }
-      canvasCtx.restore();
+      // if (results.multiFaceLandmarks) {
+      //   for (const landmarks of results.multiFaceLandmarks) {
+      //     drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {
+      //       color: '#0284c7',
+      //       lineWidth: 1,
+      //     });
+      //   }
+      // }
+      // canvasCtx.restore();
     });
 
     if (webcamRef.current?.video) {
@@ -89,9 +89,6 @@ export default function LivenessDemo() {
     <div className="card p-6 sm:p-8">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-[var(--text-h)] m-0">Điểm danh khuôn mặt</h2>
-        <p className="text-sm text-[var(--text-muted)] mt-1 m-0">
-          Kiểm tra liveness bằng webcam (demo MediaPipe)
-        </p>
       </div>
 
       {!isLoaded && (
@@ -122,12 +119,6 @@ export default function LivenessDemo() {
           />
         </div>
       </div>
-
-      <p
-        className={`mt-4 text-sm max-w-lg m-0 ${darkFlash ? 'text-white/90' : 'text-[var(--text-muted)]'}`}
-      >
-        Đưa mặt vào khung hình, bấm test khi sẵn sàng.
-      </p>
     </div>
   );
 }

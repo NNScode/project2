@@ -43,3 +43,172 @@ code {
   background: var(--accent-bg);
   color: var(--primary-700);
 }
+
+/* ── native date/time input ──────────────────────────────── */
+input[type="date"],
+input[type="time"] {
+  color-scheme: light;
+}
+
+/* ── flatpickr theme override ────────────────────────────── */
+.flatpickr-calendar {
+  font-family: var(--sans);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  background: var(--surface);
+}
+.flatpickr-months,
+.flatpickr-weekdays {
+  background: var(--accent-bg);
+}
+.flatpickr-month,
+.flatpickr-weekday {
+  color: var(--text-h) !important;
+  fill: var(--text-h) !important;
+}
+.flatpickr-day {
+  border-radius: 6px;
+  color: var(--text-h);
+}
+.flatpickr-day:hover {
+  background: var(--accent-bg-strong);
+  border-color: var(--accent-border);
+  color: var(--primary-700);
+}
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: var(--primary-600);
+  border-color: var(--primary-600);
+  color: white;
+}
+.flatpickr-day.today {
+  border-color: var(--primary-400);
+}
+.flatpickr-time {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.flatpickr-time input {
+  color: var(--text-h);
+  background: var(--surface);
+}
+.flatpickr-time input:hover,
+.flatpickr-time input:focus {
+  background: var(--accent-bg);
+}
+.numInputWrapper:hover {
+  background: var(--accent-bg);
+}
+.flatpickr-prev-month,
+.flatpickr-next-month {
+  fill: var(--text-muted) !important;
+}
+.flatpickr-prev-month:hover,
+.flatpickr-next-month:hover {
+  fill: var(--primary-600) !important;
+}
+
+/* ── react-datepicker theme override (giữ lại nếu dùng ở chỗ khác) ── */
+@import 'react-datepicker/dist/react-datepicker.css';
+
+.react-datepicker {
+  font-family: var(--sans);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  background: var(--surface);
+}
+.react-datepicker__header {
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding-top: 10px;
+}
+.react-datepicker__current-month,
+.react-datepicker__day-name,
+.react-datepicker-time__header {
+  color: var(--text-h);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.react-datepicker__day {
+  color: var(--text-h);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.react-datepicker__day:hover {
+  background: var(--accent-bg-strong);
+  color: var(--primary-700);
+}
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background: var(--primary-600) !important;
+  color: white !important;
+}
+.react-datepicker__day--today {
+  font-weight: 700;
+  color: var(--primary-600);
+}
+.react-datepicker__navigation-icon::before {
+  border-color: var(--text-muted);
+}
+.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: var(--primary-600);
+}
+.react-datepicker__time-container {
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+}
+.react-datepicker__time-container .react-datepicker__time {
+  background: var(--surface);
+}
+.react-datepicker__time-container .react-datepicker__time-box {
+  background: var(--surface);
+}
+.react-datepicker__time-list {
+  background: var(--surface) !important;
+  height: 180px !important;
+  overflow-y: auto !important;
+}
+.react-datepicker__time-list-item {
+  background: var(--surface);
+  color: var(--text-h);
+}
+.react-datepicker__time-list-item:hover {
+  background: var(--accent-bg-strong) !important;
+  color: var(--primary-700) !important;
+}
+.react-datepicker__time-list-item--selected {
+  background: var(--primary-600) !important;
+  color: white !important;
+}
+.react-datepicker__input-container input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-h);
+  font-size: 0.875rem;
+  font-family: var(--sans);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.react-datepicker__input-container input:focus {
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px rgba(31, 123, 242, 0.16);
+}
+/* Đảm bảo popper portal nổi trên modal (z-50 = 50) */
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+/* Ẩn ARIA live region (bị hiện sai trong một số browser) */
+.react-datepicker__aria-live {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+}

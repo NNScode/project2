@@ -8,7 +8,7 @@ def get_room_students(db: Session):
 
 
 def create_room_student(db: Session, payload: RoomStudentCreate):
-    room_student = models.RoomStudent(**payload.dict())
+    room_student = models.RoomStudent(**payload.model_dump())
     db.add(room_student)
     db.commit()
     db.refresh(room_student)

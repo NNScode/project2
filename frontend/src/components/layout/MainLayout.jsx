@@ -1,22 +1,29 @@
 import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import PageContent from './PageContent';
 import { useAuth } from '../../context/AuthContext';
 
 const PAGE_META = {
-  dashboard: { title: 'Tổng quan', subtitle: 'Thống kê FacePass' },
-  users: { title: 'Người dùng', subtitle: 'Quản lý tài khoản hệ thống' },
-  liveness: { title: 'Điểm danh', subtitle: 'Xác thực khuôn mặt & Liveness' },
+  '/dashboard': { title: 'Tổng quan',   subtitle: 'Thống kê FacePass' },
+  '/exams':     { title: 'Kỳ thi',       subtitle: 'Quản lý kỳ thi' },
+  '/rooms':     { title: 'Phòng thi',    subtitle: 'Quản lý phòng thi & giám thị' },
+  '/users':     { title: 'Người dùng',   subtitle: 'Quản lý tài khoản hệ thống' },
+  '/liveness':  { title: 'Điểm danh',    subtitle: 'Xác thực khuôn mặt & Liveness' },
 };
 
-export default function MainLayout({ page, onPageChange, children }) {
+export default function MainLayout() {
   const { user } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const meta = PAGE_META[page] || PAGE_META.dashboard;
+  const { pathname } = useLocation();
+  const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const meta = PAGE_META[pathname] || PAGE_META['/dashboard'];
 
   return (
     <div className="flex min-h-screen w-full max-w-none text-left bg-[var(--surface)]">
+      {/* Mobile overlay */}
       {mobileMenuOpen && (
         <button
           type="button"
@@ -27,20 +34,22 @@ export default function MainLayout({ page, onPageChange, children }) {
       )}
 
       <Sidebar
-        activePage={page}
-        onNavigate={onPageChange}
         userRole={user?.role || 'STUDENTS'}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
       />
 
-      <div className="flex flex-col flex-1 min-w-0 lg:ml-0">
+      <div className="flex flex-col flex-1 min-w-0">
         <Navbar
           title={meta.title}
           subtitle={meta.subtitle}
           onMenuClick={() => setMobileMenuOpen(true)}
         />
-        <PageContent>{children}</PageContent>
+        <PageContent>
+          <Outlet />
+        </PageContent>
       </div>
     </div>
   );

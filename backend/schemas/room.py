@@ -9,10 +9,20 @@ class RoomBase(BaseModel):
     start_time: datetime
     end_time: datetime
     exam_url: Optional[str] = None
+    proctor_id: Optional[int] = None
 
 
 class RoomCreate(RoomBase):
     pass
+
+
+class RoomUpdate(BaseModel):
+    room_name: Optional[str] = None
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    exam_url: Optional[str] = None
+    proctor_id: Optional[int] = None
+    exam_id: Optional[int] = None
 
 
 class RoomRead(RoomBase):

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { getUsers, createUser, updateUser, deleteUser } from '../api';
+import ConfirmModal from '../components/ConfirmModal';
 
 const ROLES = [
   { value: 'ADMIN', label: 'Quản trị' },
@@ -23,16 +25,13 @@ const emptyForm = {
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState({ type: '', text: '' });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-
-  const showNotice = (type, text) => {
-    setNotice({ type, text });
-    setTimeout(() => setNotice({ type: '', text: '' }), 4000);
-  };
+  const [confirm, setConfirm] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState('ALL');
 
   const loadUsers = async () => {
     setLoading(true);
@@ -40,7 +39,7 @@ export default function UsersPage() {
       const res = await getUsers();
       setUsers(res.data);
     } catch (e) {
-      showNotice('error', e.response?.data?.detail || 'Không tải được danh sách');
+      toast.error(e.response?.data?.detail || 'Không tải được danh sách');
     } finally {
       setLoading(false);
     }
@@ -85,10 +84,10 @@ export default function UsersPage() {
         };
         if (form.password.trim()) payload.password = form.password;
         await updateUser(editingId, payload);
-        showNotice('success', 'Cập nhật người dùng thành công');
+        toast.success('Cập nhật người dùng thành công');
       } else {
         if (!form.password.trim()) {
-          showNotice('error', 'Vui lòng nhập mật khẩu');
+          toast.error('Vui lòng nhập mật khẩu');
           setSaving(false);
           return;
         }
@@ -98,31 +97,46 @@ export default function UsersPage() {
           role: form.role,
           password: form.password,
         });
-        showNotice('success', 'Thêm người dùng thành công');
+        toast.success('Thêm người dùng thành công');
       }
       closeModal();
       loadUsers();
     } catch (err) {
       const detail = err.response?.data?.detail;
-      showNotice('error', typeof detail === 'string' ? detail : 'Thao tác thất bại');
+      toast.error(typeof detail === 'string' ? detail : 'Thao tác thất bại');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (user) => {
-    if (!window.confirm(`Xóa người dùng "${user.full_name}" (${user.user_name})?`)) return;
-    try {
-      await deleteUser(user.id);
-      showNotice('success', 'Đã xóa người dùng');
-      loadUsers();
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      showNotice('error', typeof detail === 'string' ? detail : 'Không xóa được');
-    }
+  const handleDelete = (user) => {
+    setConfirm({
+      title: 'Xóa người dùng',
+      message: `Bạn có chắc muốn xóa "${user.full_name}" (${user.user_name})?`,
+      confirmLabel: 'Xóa',
+      onConfirm: async () => {
+        try {
+          await deleteUser(user.id);
+          toast.success('Đã xóa người dùng');
+          loadUsers();
+        } catch (err) {
+          const detail = err.response?.data?.detail;
+          toast.error(typeof detail === 'string' ? detail : 'Không xóa được');
+        }
+      },
+    });
   };
 
   const roleLabel = (role) => ROLES.find((r) => r.value === role)?.label || role;
+
+  const displayed = users.filter((u) => {
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q
+      || u.user_name.toLowerCase().includes(q)
+      || u.full_name.toLowerCase().includes(q);
+    const matchRole = filterRole === 'ALL' || u.role === filterRole;
+    return matchSearch && matchRole;
+  });
 
   return (
     <div className="text-left w-full">
@@ -138,24 +152,39 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {notice.text && (
-        <div
-          className={`mb-4 px-4 py-3 rounded-[var(--radius-sm)] text-sm border ${
-            notice.type === 'success'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-red-50 border-red-200 text-red-600'
-          }`}
-        >
-          {notice.text}
+      {/* Search + filter */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm tên hoặc tài khoản..."
+            className="input-field w-full pl-9 pr-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] text-sm"
+          />
         </div>
-      )}
+        <div className="flex gap-2 shrink-0">
+          {[{ v: 'ALL', l: 'Tất cả' }, ...ROLES.map((r) => ({ v: r.value, l: r.label }))].map(({ v, l }) => (
+            <button key={v} type="button" onClick={() => setFilterRole(v)}
+              className={`px-3 py-2 rounded-[var(--radius-sm)] text-xs font-medium border transition-all ${
+                filterRole === v
+                  ? 'bg-[var(--primary-600)] text-white border-[var(--primary-600)]'
+                  : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:border-[var(--accent-border)] hover:text-[var(--primary-700)]'
+              }`}
+            >{l}</button>
+          ))}
+        </div>
+      </div>
 
       <div className="card overflow-hidden p-0">
         {loading ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">Đang tải...</p>
-        ) : users.length === 0 ? (
+        ) : displayed.length === 0 ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">
-            Chưa có người dùng. Bấm &quot;Thêm người dùng&quot; để tạo mới.
+            {users.length === 0 ? 'Chưa có người dùng.' : 'Không tìm thấy kết quả phù hợp.'}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -170,7 +199,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {displayed.map((u) => (
                   <tr
                     key={u.id}
                     className="border-b border-[var(--border-light)] hover:bg-[var(--accent-bg)]/40 transition"
@@ -209,6 +238,7 @@ export default function UsersPage() {
         )}
       </div>
 
+      <ConfirmModal state={confirm} onClose={() => setConfirm(null)} />
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30"

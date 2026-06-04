@@ -1,91 +1,156 @@
-/* FacePass — trắng chủ đạo, xanh tô điểm, tone mềm */
+/* FacePass — trắng chủ đạo, xanh Facebook tô điểm, tone mềm */
 :root {
-  --primary-50: #f0f9ff;
-  --primary-100: #e0f2fe;
-  --primary-200: #bae6fd;
-  --primary-300: #7dd3fc;
-  --primary-400: #38bdf8;
-  --primary-500: #0ea5e9;
-  --primary-600: #0284c7;
-  --primary-700: #0369a1;
-  --primary-800: #075985;
+  /* Palette Facebook blue (#1f7bf2 = primary-600) */
+  --primary-50:  #eff5ff;
+  --primary-100: #dae8fe;
+  --primary-200: #b5d2fd;
+  --primary-300: #83b2fb;
+  --primary-400: #5090f7;
+  --primary-500: #2e72f4;
+  --primary-600: #1f7bf2;
+  --primary-700: #155ec8;
+  --primary-800: #1249a0;
 
-  --text: #64748b;
-  --text-h: #1e293b;
+  --text:       #64748b;
+  --text-h:     #1e293b;
   --text-muted: #94a3b8;
 
-  --bg: #f4f7fb;
-  --surface: #ffffff;
-  --sidebar-bg: #ffffff;
-  --border: #e8eef4;
-  --border-light: #f1f5f9;
-  --code-bg: #f8fafc;
+  --bg:          #f0f5fb;
+  --surface:     #ffffff;
+  --sidebar-bg:  #ffffff;
+  --border:      #e2eaf4;
+  --border-light:#edf2f9;
+  --code-bg:     #f5f8fc;
 
-  --accent: var(--primary-600);
-  --accent-hover: var(--primary-700);
-  --accent-bg: #eff6ff;
-  --accent-bg-strong: #dbeafe;
-  --accent-border: #bfdbfe;
+  --accent:           var(--primary-600);
+  --accent-hover:     var(--primary-700);
+  --accent-bg:        #eff5ff;
+  --accent-bg-strong: #dae8fe;
+  --accent-border:    #b5d2fd;
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 24px rgba(3, 105, 161, 0.07);
-  --shadow-lg: 0 8px 32px rgba(3, 105, 161, 0.1);
-  --radius: 12px;
+  --shadow-sm: 0 1px 3px rgba(31, 123, 242, 0.06);
+  --shadow-md: 0 4px 24px rgba(31, 123, 242, 0.10);
+  --shadow-lg: 0 8px 32px rgba(31, 123, 242, 0.14);
+  --radius:    12px;
   --radius-sm: 8px;
+
+  --transition: 0.2s ease;
 }
 
 /* Luôn dùng theme sáng — không tự chuyển dark */
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #64748b;
-    --text-h: #1e293b;
-    --bg: #f4f7fb;
-    --surface: #ffffff;
+    --text:       #64748b;
+    --text-h:     #1e293b;
+    --bg:         #f0f5fb;
+    --surface:    #ffffff;
     --sidebar-bg: #ffffff;
-    --border: #e8eef4;
-    --code-bg: #f8fafc;
+    --border:     #e2eaf4;
+    --code-bg:    #f5f8fc;
   }
 }
 
+/* ── Keyframes ──────────────────────────────────────────── */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes pulse-ring {
+  0%   { transform: scale(1);    opacity: 0.6; }
+  70%  { transform: scale(1.15); opacity: 0; }
+  100% { transform: scale(1);    opacity: 0; }
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background:    var(--surface);
+  border:        1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+  box-shadow:    var(--shadow-sm);
+  animation:     fadeUp 0.3s ease both;
+  transition:    border-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
 
 .card:hover {
   border-color: var(--accent-border);
-  box-shadow: var(--shadow-md);
+  box-shadow:   var(--shadow-md);
+  transform:    translateY(-1px);
 }
 
+/* ── Primary button ─────────────────────────────────────── */
+
 .btn-primary-soft {
-  background: var(--primary-600);
-  color: white;
+  background:    var(--primary-600);
+  color:         white;
   border-radius: var(--radius-sm);
-  transition: background 0.2s, box-shadow 0.2s;
+  transition:    background var(--transition), box-shadow var(--transition), transform var(--transition);
+  position:      relative;
+  overflow:      hidden;
+}
+
+.btn-primary-soft::after {
+  content:           '';
+  position:          absolute;
+  inset:             0;
+  background:        linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 55%, transparent 70%);
+  background-size:   200% 100%;
+  opacity:           0;
+  transition:        opacity 0.2s;
+}
+
+.btn-primary-soft:hover:not(:disabled)::after {
+  opacity:    1;
+  animation:  shimmer 0.6s linear;
 }
 
 .btn-primary-soft:hover:not(:disabled) {
-  background: var(--primary-700);
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  background:  var(--primary-700);
+  box-shadow:  0 4px 16px rgba(31, 123, 242, 0.38);
+  transform:   translateY(-1px);
 }
 
+.btn-primary-soft:active:not(:disabled) {
+  transform:  translateY(0);
+  box-shadow: 0 2px 8px rgba(31, 123, 242, 0.25);
+}
+
+/* ── Ghost button ───────────────────────────────────────── */
+
 .btn-ghost {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-h);
+  background:    var(--surface);
+  border:        1px solid var(--border);
+  color:         var(--text-h);
   border-radius: var(--radius-sm);
-  transition: background 0.15s, border-color 0.15s;
+  transition:    background var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
 .btn-ghost:hover {
-  background: var(--accent-bg);
+  background:   var(--accent-bg);
   border-color: var(--accent-border);
+  box-shadow:   0 1px 6px rgba(31, 123, 242, 0.10);
+}
+
+/* ── Input focus ────────────────────────────────────────── */
+
+.input-field {
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
 
 .input-field:focus {
-  outline: none;
+  outline:      none;
   border-color: var(--primary-400);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+  box-shadow:   0 0 0 3px rgba(31, 123, 242, 0.16);
 }

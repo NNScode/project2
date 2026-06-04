@@ -12,5 +12,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+    /* Trả về index.html cho mọi route — cần thiết cho BrowserRouter */
+    historyApiFallback: true,
   },
 })

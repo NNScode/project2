@@ -1,0 +1,32 @@
+---
+description: Kiến trúc tổng thể và quy tắc trả lời cho dự án FacePass
+alwaysApply: true
+---
+
+# FacePass — Quy tắc cốt lõi
+
+## Brevity (ưu tiên #1)
+- Trả lời ngắn gọn, không giải thích dài dòng trừ khi được hỏi
+- Không nhắc lại code đã tồn tại nếu không thay đổi
+- Không viết comment giải thích "điều hiển nhiên"
+
+## Stack
+- **Frontend**: React 18 + Vite, Tailwind v3, react-router-dom v6, Axios
+- **Backend**: FastAPI, SQLAlchemy ORM, Alembic, MySQL (pymysql), bcrypt, python-jose
+- **Python**: 3.x, chạy bằng `py -3` (không phải `python`)
+
+## Cấu trúc thư mục
+```
+backend/
+  routers/   crud/   schemas/   models.py   database.py   alembic/
+frontend/src/
+  pages/   components/layout/   context/   api/   styles/
+```
+
+## Database
+- Schema thực tế trong MySQL có thể khác `models.py` — **dùng raw SQL** khi cần đúng tên cột
+- Migration: tạo file `alembic/versions/000N_*.py`, chạy `py -3 -m alembic upgrade head`
+- Không dùng `model.dict()` với SQLAlchemy 2.x — dùng `model.model_dump()`
+
+## Ngôn ngữ UI
+- Toàn bộ nhãn, thông báo, placeholder → **tiếng Việt**

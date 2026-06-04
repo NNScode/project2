@@ -8,7 +8,7 @@ def get_students(db: Session):
 
 
 def create_student(db: Session, payload: StudentCreate):
-    student = models.Student(**payload.dict())
+    student = models.Student(**payload.model_dump())
     db.add(student)
     db.commit()
     db.refresh(student)

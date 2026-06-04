@@ -68,6 +68,7 @@ class Room(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     exam_id = Column(Integer, ForeignKey("exams.id"), nullable=False)
+    proctor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     room_name = Column(String(100), nullable=False)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)

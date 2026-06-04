@@ -9,7 +9,7 @@ def get_attendance_records(db: Session):
 
 
 def create_attendance_record(db: Session, payload: AttendanceCreate):
-    record = models.AttendanceRecord(**payload.dict())
+    record = models.AttendanceRecord(**payload.model_dump())
     db.add(record)
     db.commit()
     db.refresh(record)

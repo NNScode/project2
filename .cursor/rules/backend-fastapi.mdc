@@ -1,0 +1,51 @@
+---
+description: Quy tắc FastAPI/SQLAlchemy cho backend FacePass
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend — FastAPI + SQLAlchemy
+
+## Cấu trúc chuẩn mỗi resource
+
+**crud/x.py**
+```python
+def get_x(db): return db.query(models.X).order_by(models.X.id.desc()).all()
+def get_x_by_id(db, id): return db.query(models.X).filter(models.X.id == id).first()
+def create_x(db, payload: XCreate): ...
+def update_x(db, id, payload: XUpdate):
+    x = get_x_by_id(db, id)
+    if not x: return None
+    for k, v in payload.model_dump(exclude_unset=True).items(): setattr(x, k, v)
+    db.commit(); db.refresh(x); return x
+def delete_x(db, id) -> bool: ...
+```
+
+**schemas/x.py** — luôn có 4 class:
+```python
+class XBase(BaseModel): ...
+class XCreate(XBase): pass
+class XUpdate(BaseModel): ...  # tất cả Optional
+class XRead(XBase):
+    id: int
+    class Config: from_attributes = True
+```
+
+**routers/x.py**
+```python
+router = APIRouter(prefix="/x", tags=["x"])
+# Auth guard:
+current_user: models.User = Depends(get_current_user)
+if current_user.role != models.UserRole.ADMIN:
+    raise HTTPException(403, "Không có quyền")
+```
+
+## Auth & Security
+- `get_current_user` từ `dependencies.py` — inject vào route cần bảo vệ
+- Password hash: `bcrypt` qua `core/security.py`
+- Không lộ `password_hash` trong response — không thêm vào `*Read` schema
+
+## Quy tắc nhỏ
+- Dùng `model_dump()` (SQLAlchemy 2.x), không dùng `.dict()`
+- 404 response: `raise HTTPException(404, "Không tìm thấy ...")`
+- Khi thêm router mới: đăng ký trong `routers/__init__.py` và `main.py`
