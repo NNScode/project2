@@ -10,3 +10,16 @@ dist/
 # Bỏ qua các file cấu hình hệ điều hành và file môi trường
 .DS_Store
 .env
+
+# Ảnh upload thí sinh (giữ thư mục trống)
+backend/uploads/*
+!backend/uploads/.gitkeep
+!backend/uploads/students/
+backend/uploads/students/*
+!backend/uploads/students/.gitkeep
+backend/uploads/checkins/*
+!backend/uploads/checkins/.gitkeep
+
+# Model cũ MediaPipe (không dùng nữa)
+backend/models/*.task
+!backend/models/.gitkeep
