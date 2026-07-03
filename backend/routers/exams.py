@@ -11,7 +11,10 @@ router = APIRouter(prefix="/exams", tags=["exams"])
 
 
 @router.get("/", response_model=List[ExamRead])
-def list_exams(db: Session = Depends(get_db)):
+def list_exams(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
     return get_exams(db)
 
 

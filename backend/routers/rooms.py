@@ -11,8 +11,14 @@ router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 
 @router.get("/", response_model=List[RoomRead])
-def list_rooms(db: Session = Depends(get_db)):
-    return get_rooms(db)
+def list_rooms(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    rooms = get_rooms(db)
+    if current_user.role == models.UserRole.PROCTOR:
+        return [r for r in rooms if r.proctor_id == current_user.id]
+    return rooms
 
 
 @router.post("/", response_model=RoomRead)

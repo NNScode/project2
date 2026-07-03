@@ -10,11 +10,17 @@ import models
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+def _require_admin_or_proctor(user: models.User):
+    if user.role not in (models.UserRole.ADMIN, models.UserRole.PROCTOR):
+        raise HTTPException(status_code=403, detail="Không có quyền truy cập")
+
+
 @router.get("/", response_model=List[UserRead])
 def list_users(
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    current_user: models.User = Depends(get_current_user),
 ):
+    _require_admin_or_proctor(current_user)
     return get_users(db)
 
 

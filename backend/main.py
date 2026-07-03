@@ -2,8 +2,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 from crud.user import ensure_seed_admin
+from core.config import UPLOAD_DIR
+from core.uploads import ensure_upload_dirs
 from routers import (
     auth_router,
     users_router,
@@ -18,6 +21,7 @@ from routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    ensure_upload_dirs()
     db = SessionLocal()
     try:
         ensure_seed_admin(db)
@@ -47,6 +51,8 @@ app.include_router(rooms_router)
 app.include_router(room_students_router)
 app.include_router(attendance_router)
 app.include_router(dashboard_router)
+
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.get("/")
