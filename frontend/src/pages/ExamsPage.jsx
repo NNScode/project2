@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getExams, createExam, updateExam, deleteExam } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
 const STATUSES = [
   { value: 'FUTURE', label: 'Sắp diễn ra' },
@@ -27,6 +29,10 @@ function fmtDate(iso) {
 export default function ExamsPage() {
   const [exams,    setExams]    = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form,     setForm]     = useState(emptyForm);
@@ -34,12 +40,20 @@ export default function ExamsPage() {
   const [confirm,  setConfirm]  = useState(null);
   const [filter,   setFilter]   = useState('ALL');
   const [search,   setSearch]   = useState('');
+  const debouncedSearch = useDebouncedValue(search);
 
   const loadExams = async () => {
     setLoading(true);
     try {
-      const res = await getExams();
-      setExams(res.data);
+      const res = await getExams({
+        page,
+        page_size: pageSize,
+        search: debouncedSearch || undefined,
+        status: filter !== 'ALL' ? filter : undefined,
+      });
+      setExams(res.data.items);
+      setTotal(res.data.total);
+      setTotalPages(res.data.total_pages);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Không tải được danh sách');
     } finally {
@@ -47,7 +61,8 @@ export default function ExamsPage() {
     }
   };
 
-  useEffect(() => { loadExams(); }, []);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filter]);
+  useEffect(() => { loadExams(); }, [page, pageSize, debouncedSearch, filter]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -107,12 +122,6 @@ export default function ExamsPage() {
     });
   };
 
-  const displayed = exams.filter((e) => {
-    const q = search.trim().toLowerCase();
-    return (filter === 'ALL' || e.status === filter)
-      && (!q || e.name.toLowerCase().includes(q) || (e.description || '').toLowerCase().includes(q));
-  });
-
   return (
     <div className="text-left w-full">
       {/* Header */}
@@ -160,11 +169,6 @@ export default function ExamsPage() {
             }`}
           >
             {l}
-            {v !== 'ALL' && (
-              <span className="ml-1.5 opacity-70">
-                ({exams.filter((e) => e.status === v).length})
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -173,11 +177,12 @@ export default function ExamsPage() {
       <div className="card overflow-hidden p-0">
         {loading ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">Đang tải...</p>
-        ) : displayed.length === 0 ? (
+        ) : exams.length === 0 ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">
-            {exams.length === 0 ? 'Chưa có kỳ thi nào.' : 'Không tìm thấy kết quả phù hợp.'}
+            {total === 0 && !debouncedSearch && filter === 'ALL' ? 'Chưa có kỳ thi nào.' : 'Không tìm thấy kết quả phù hợp.'}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -191,7 +196,7 @@ export default function ExamsPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((exam) => (
+                {exams.map((exam) => (
                   <tr
                     key={exam.id}
                     className="border-b border-[var(--border-light)] hover:bg-[var(--accent-bg)]/40 transition"
@@ -232,6 +237,15 @@ export default function ExamsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+          />
+          </>
         )}
       </div>
 

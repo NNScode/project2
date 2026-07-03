@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  getStudents, createStudent, updateStudent, deleteStudent, uploadStudentCccd, getUsers,
+  getStudents, createStudent, updateStudent, deleteStudent, uploadStudentCccd, deleteStudentCccd, getUsers,
 } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
 import ImageDropzone from '../components/ImageDropzone';
+import Pagination from '../components/Pagination';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
 const emptyForm = {
   user_id: '',
@@ -16,25 +18,46 @@ export default function StudentsPage() {
   const [students, setStudents] = useState([]);
   const [studentUsers, setStudentUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [imageFile, setImageFile] = useState(null);
   const [imageError, setImageError] = useState('');
   const [existingImageUrl, setExistingImageUrl] = useState('');
+  const [removeCccdImage, setRemoveCccdImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
 
-  const loadAll = async () => {
+  const loadStudentUsers = async () => {
+    try {
+      const uRes = await getUsers({
+        role: 'STUDENTS',
+        has_student_profile: false,
+        page_size: 100,
+      });
+      setStudentUsers(uRes.data.items);
+    } catch {
+      setStudentUsers([]);
+    }
+  };
+
+  const loadStudents = async () => {
     setLoading(true);
     try {
-      const [sRes, uRes] = await Promise.all([getStudents(), getUsers()]);
-      setStudents(sRes.data);
-      const assignedUserIds = new Set(sRes.data.map((s) => s.user_id));
-      setStudentUsers(
-        uRes.data.filter((u) => u.role === 'STUDENTS' && !assignedUserIds.has(u.id)),
-      );
+      const sRes = await getStudents({
+        page,
+        page_size: pageSize,
+        search: debouncedSearch || undefined,
+      });
+      setStudents(sRes.data.items);
+      setTotal(sRes.data.total);
+      setTotalPages(sRes.data.total_pages);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Không tải được dữ liệu');
     } finally {
@@ -42,12 +65,19 @@ export default function StudentsPage() {
     }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  const loadAll = async () => {
+    await Promise.all([loadStudents(), loadStudentUsers()]);
+  };
+
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+  useEffect(() => { loadStudents(); }, [page, pageSize, debouncedSearch]);
+  useEffect(() => { loadStudentUsers(); }, []);
 
   const resetImageState = () => {
     setImageFile(null);
     setImageError('');
     setExistingImageUrl('');
+    setRemoveCccdImage(false);
   };
 
   const openCreate = () => {
@@ -79,6 +109,12 @@ export default function StudentsPage() {
   const handleFileChange = (file, err) => {
     setImageFile(file);
     setImageError(err || '');
+    if (file) setRemoveCccdImage(false);
+  };
+
+  const handlePreviewClear = () => {
+    setExistingImageUrl('');
+    setRemoveCccdImage(true);
   };
 
   const handleSubmit = async (e) => {
@@ -114,6 +150,9 @@ export default function StudentsPage() {
             ? 'Cập nhật hồ sơ và trích xuất khuôn mặt thành công'
             : 'Thêm thí sinh và trích xuất khuôn mặt thành công',
         );
+      } else if (removeCccdImage && editingId) {
+        await deleteStudentCccd(editingId);
+        toast.success('Đã gỡ ảnh CCCD');
       } else if (editingId) {
         toast.success('Cập nhật hồ sơ thí sinh thành công');
       } else {
@@ -148,15 +187,6 @@ export default function StudentsPage() {
     });
   };
 
-  const displayed = students.filter((s) => {
-    const q = search.trim().toLowerCase();
-    return !q
-      || s.student_number.toLowerCase().includes(q)
-      || s.cccd_number.toLowerCase().includes(q)
-      || (s.full_name || '').toLowerCase().includes(q)
-      || (s.user_name || '').toLowerCase().includes(q);
-  });
-
   return (
     <div className="text-left w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -187,11 +217,12 @@ export default function StudentsPage() {
       <div className="card overflow-hidden p-0">
         {loading ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">Đang tải...</p>
-        ) : displayed.length === 0 ? (
+        ) : students.length === 0 ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">
-            {students.length === 0 ? 'Chưa có hồ sơ thí sinh.' : 'Không tìm thấy kết quả phù hợp.'}
+            {total === 0 && !debouncedSearch ? 'Chưa có hồ sơ thí sinh.' : 'Không tìm thấy kết quả phù hợp.'}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -206,7 +237,7 @@ export default function StudentsPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((s) => (
+                {students.map((s) => (
                   <tr key={s.id} className="border-b border-[var(--border-light)] hover:bg-[var(--accent-bg)]/40 transition">
                     <td className="px-4 py-3 text-[var(--text-muted)]">{s.id}</td>
                     <td className="px-4 py-3">
@@ -243,6 +274,15 @@ export default function StudentsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+          />
+          </>
         )}
       </div>
 
@@ -285,6 +325,7 @@ export default function StudentsPage() {
               <ImageDropzone
                 file={imageFile}
                 onFileChange={handleFileChange}
+                onPreviewClear={handlePreviewClear}
                 previewUrl={existingImageUrl}
                 disabled={saving}
               />

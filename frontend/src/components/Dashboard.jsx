@@ -28,7 +28,7 @@ function ReviewBanner({ count, message }) {
     <div className="p-4 rounded-[var(--radius)] bg-[var(--accent-bg)] border border-[var(--accent-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <p className="text-sm text-[var(--primary-700)] m-0">{message}</p>
       <Link
-        to="/attendance"
+        to="/rooms"
         className="btn-primary-soft px-4 py-2 text-sm font-medium no-underline shrink-0 text-center"
       >
         Duyệt ngay
@@ -98,7 +98,7 @@ function ProctorDashboard({ summary }) {
               <SectionTitle>Đang diễn ra</SectionTitle>
               <div className="space-y-3">
                 {activeRooms.map((room) => (
-                  <RoomCard key={room.room_id} room={room} showReview />
+                  <RoomCard key={room.room_id} room={room} showReview showView />
                 ))}
               </div>
             </div>
@@ -129,7 +129,7 @@ function ProctorDashboard({ summary }) {
   );
 }
 
-function RoomCard({ room, showReview, children }) {
+function RoomCard({ room, showReview, showView, children }) {
   return (
     <div className="card p-5">
       <div className="flex flex-wrap justify-between gap-2 mb-1">
@@ -152,7 +152,19 @@ function RoomCard({ room, showReview, children }) {
           )}
         </p>
       )}
-      {children}
+      {(showView || children) && (
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          {showView && (
+            <Link
+              to={`/rooms/${room.room_id}`}
+              className="btn-primary-soft px-4 py-2 text-sm font-medium no-underline"
+            >
+              Xem
+            </Link>
+          )}
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -187,7 +199,7 @@ function StudentDashboard({ summary }) {
           )}
           {room.can_check_in && summary.has_face_vector && (
             <Link
-              to="/liveness"
+              to={`/liveness/${room.room_id}`}
               className="btn-primary-soft inline-block mt-3 px-4 py-2 text-sm font-medium no-underline"
             >
               Điểm danh
@@ -196,7 +208,7 @@ function StudentDashboard({ summary }) {
           {!summary.has_face_vector && (
             <p className="text-xs text-amber-700 mt-2 m-0">Chưa có ảnh CCCD — liên hệ quản trị.</p>
           )}
-          {room.exam_url && (
+          {room.attendance_status === 'SUCCESS' && room.exam_url && (
             <a
               href={room.exam_url}
               target="_blank"

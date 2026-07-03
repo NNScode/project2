@@ -6,9 +6,8 @@ import Dashboard from './components/Dashboard';
 import UsersPage from './pages/UsersPage';
 import ExamsPage from './pages/ExamsPage';
 import RoomsPage from './pages/RoomsPage';
+import RoomDetailPage from './pages/RoomDetailPage';
 import StudentsPage from './pages/StudentsPage';
-import RoomStudentsPage from './pages/RoomStudentsPage';
-import AttendancePage from './pages/AttendancePage';
 import LivenessDemo from './components/LivenessDemo';
 import { NotFoundPage, ForbiddenPage } from './pages/ErrorPages';
 
@@ -61,6 +60,10 @@ function AppRoutes() {
           element={<ProtectedRoute roles={['ADMIN', 'PROCTOR']}><RoomsPage /></ProtectedRoute>}
         />
         <Route
+          path="/rooms/:id"
+          element={<ProtectedRoute roles={['ADMIN', 'PROCTOR']}><RoomDetailPage /></ProtectedRoute>}
+        />
+        <Route
           path="/users"
           element={<ProtectedRoute roles={['ADMIN']}><UsersPage /></ProtectedRoute>}
         />
@@ -69,15 +72,11 @@ function AppRoutes() {
           element={<ProtectedRoute roles={['ADMIN']}><StudentsPage /></ProtectedRoute>}
         />
         <Route
-          path="/room-students"
-          element={<ProtectedRoute roles={['ADMIN']}><RoomStudentsPage /></ProtectedRoute>}
-        />
-        <Route
-          path="/attendance"
-          element={<ProtectedRoute roles={['ADMIN', 'PROCTOR']}><AttendancePage /></ProtectedRoute>}
-        />
-        <Route
           path="/liveness"
+          element={<ProtectedRoute roles={['STUDENTS']}><Navigate to="/dashboard" replace /></ProtectedRoute>}
+        />
+        <Route
+          path="/liveness/:roomId"
           element={<ProtectedRoute roles={['STUDENTS']}><LivenessDemo /></ProtectedRoute>}
         />
       </Route>

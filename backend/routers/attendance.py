@@ -1,9 +1,9 @@
-from typing import List
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
 from schemas.attendance import AttendanceCreate, AttendanceUpdate, AttendanceRead, CheckInRead
+from schemas.common import PaginatedResponse
 from crud.attendance import (
     get_attendance_records,
     update_attendance_record,
@@ -45,14 +45,27 @@ async def check_in(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=List[AttendanceRead])
+@router.get("/", response_model=PaginatedResponse[AttendanceRead])
 def list_attendance_records(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str | None = None,
+    status: models.AttendanceStatus | None = None,
+    room_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_staff(current_user)
     proctor_id = current_user.id if current_user.role == models.UserRole.PROCTOR else None
-    return get_attendance_records(db, proctor_id=proctor_id)
+    return get_attendance_records(
+        db,
+        page=page,
+        page_size=page_size,
+        proctor_id=proctor_id,
+        search=search,
+        status=status,
+        room_id=room_id,
+    )
 
 
 @router.post("/", response_model=AttendanceRead)

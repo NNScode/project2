@@ -36,7 +36,7 @@ export default function Navbar({ title, subtitle, onMenuClick }) {
           <p className="text-xs text-[var(--primary-600)] m-0">{ROLE_LABEL[user?.role] || user?.role}</p>
         </div>
         <div className="w-9 h-9 rounded-full bg-[var(--accent-bg)] border border-[var(--accent-border)] text-[var(--primary-700)] flex items-center justify-center text-sm font-semibold">
-          {(user?.full_name || '?').charAt(0).toUpperCase()}
+          {(user?.full_name?.split(' ')[2] || '?').charAt(0).toUpperCase()}
         </div>
         <button
           type="button"

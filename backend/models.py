@@ -102,6 +102,7 @@ class AttendanceRecord(Base):
     liveness_score = Column(Float, nullable=True)
     match_score = Column(Float, nullable=True)
     proctor_note = Column(Text, nullable=True)
+    check_in_attempt_count = Column(Integer, nullable=False, default=0)
 
     room = relationship("Room", back_populates="attendance_records")
     student = relationship("Student", back_populates="records")

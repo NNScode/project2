@@ -11,9 +11,7 @@ const PAGE_META = {
   '/rooms':         { title: 'Phòng thi',        subtitle: 'Quản lý phòng thi & giám thị' },
   '/users':         { title: 'Người dùng',       subtitle: 'Quản lý tài khoản hệ thống' },
   '/students':      { title: 'Thí sinh',         subtitle: 'Quản lý hồ sơ thí sinh' },
-  '/room-students': { title: 'Gán phòng',        subtitle: 'Phân bổ thí sinh theo phòng thi' },
-  '/attendance':    { title: 'Duyệt điểm danh',  subtitle: 'Xem và xử lý bản ghi điểm danh' },
-  '/liveness':      { title: 'Điểm danh',        subtitle: 'Xác thực khuôn mặt & Liveness' },
+  '/liveness':      { title: 'Điểm danh',        subtitle: 'Nháy mắt & so khớp CCCD' },
 };
 
 export default function MainLayout() {
@@ -22,7 +20,13 @@ export default function MainLayout() {
   const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const meta = PAGE_META[pathname] || PAGE_META['/dashboard'];
+  const roomDetailMatch = pathname.match(/^\/rooms\/(\d+)$/);
+  const livenessMatch = pathname.match(/^\/liveness\/(\d+)$/);
+  const meta = roomDetailMatch
+    ? { title: 'Chi tiết phòng thi', subtitle: `Phòng #${roomDetailMatch[1]}` }
+    : livenessMatch
+      ? { title: 'Điểm danh', subtitle: 'Nháy mắt & so khớp CCCD' }
+      : (PAGE_META[pathname] || PAGE_META['/dashboard']);
 
   return (
     <div className="flex min-h-screen w-full max-w-none text-left bg-[var(--surface)]">

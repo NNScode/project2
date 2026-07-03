@@ -1,10 +1,41 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 import models
 from schemas.exam import ExamCreate, ExamUpdate
+from schemas.common import make_paged, normalize_pagination
 
 
-def get_exams(db: Session):
-    return db.query(models.Exam).order_by(models.Exam.id.desc()).all()
+def _exams_query(
+    db: Session,
+    search: str | None = None,
+    status: models.ExamStatus | None = None,
+):
+    q = db.query(models.Exam)
+    if status is not None:
+        q = q.filter(models.Exam.status == status)
+    if search:
+        term = f"%{search.strip()}%"
+        q = q.filter(
+            or_(
+                models.Exam.name.ilike(term),
+                models.Exam.description.ilike(term),
+            )
+        )
+    return q
+
+
+def get_exams(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    search: str | None = None,
+    status: models.ExamStatus | None = None,
+):
+    page, page_size, offset = normalize_pagination(page, page_size)
+    q = _exams_query(db, search, status)
+    total = q.count()
+    rows = q.order_by(models.Exam.id.desc()).offset(offset).limit(page_size).all()
+    return make_paged(rows, total, page, page_size)
 
 
 def get_exam_by_id(db: Session, exam_id: int):

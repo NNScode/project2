@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -9,6 +9,16 @@ class RoomStudentBase(BaseModel):
 
 class RoomStudentCreate(RoomStudentBase):
     pass
+
+
+class RoomStudentBulkCreate(BaseModel):
+    room_id: int
+    student_ids: list[int] = Field(..., min_length=1)
+
+
+class RoomStudentBulkResult(BaseModel):
+    created: int
+    skipped: int
 
 
 class RoomStudentUpdate(BaseModel):

@@ -1,21 +1,25 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
 from schemas.exam import ExamCreate, ExamUpdate, ExamRead
+from schemas.common import PaginatedResponse
 from crud.exam import get_exams, create_exam, update_exam, delete_exam
 import models
 
 router = APIRouter(prefix="/exams", tags=["exams"])
 
 
-@router.get("/", response_model=List[ExamRead])
+@router.get("/", response_model=PaginatedResponse[ExamRead])
 def list_exams(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str | None = None,
+    status: models.ExamStatus | None = None,
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
-    return get_exams(db)
+    return get_exams(db, page=page, page_size=page_size, search=search, status=status)
 
 
 @router.post("/", response_model=ExamRead)

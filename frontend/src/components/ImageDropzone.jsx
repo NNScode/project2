@@ -6,6 +6,7 @@ const MAX_MB = 5;
 export default function ImageDropzone({
   file,
   onFileChange,
+  onPreviewClear,
   previewUrl,
   disabled = false,
   label = 'Ảnh CCCD',
@@ -96,8 +97,12 @@ export default function ImageDropzone({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onFileChange(null, null);
-                  if (inputRef.current) inputRef.current.value = '';
+                  if (file) {
+                    onFileChange(null, null);
+                    if (inputRef.current) inputRef.current.value = '';
+                  } else {
+                    onPreviewClear?.();
+                  }
                 }}
                 className="text-xs text-red-500 hover:text-red-700 font-medium"
               >

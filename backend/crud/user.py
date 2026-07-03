@@ -1,11 +1,50 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 import models
 from schemas.user import UserCreate, UserUpdate
+from schemas.common import make_paged, normalize_pagination
 from core.security import get_password_hash, verify_password
 
 
-def get_users(db: Session):
-    return db.query(models.User).order_by(models.User.id.desc()).all()
+def _users_query(
+    db: Session,
+    search: str | None = None,
+    role: models.UserRole | None = None,
+    has_student_profile: bool | None = None,
+):
+    q = db.query(models.User)
+    if role is not None:
+        q = q.filter(models.User.role == role)
+    if has_student_profile is False:
+        q = q.outerjoin(models.Student, models.Student.user_id == models.User.id).filter(
+            models.Student.id.is_(None)
+        )
+    elif has_student_profile is True:
+        q = q.join(models.Student, models.Student.user_id == models.User.id)
+    if search:
+        term = f"%{search.strip()}%"
+        q = q.filter(
+            or_(
+                models.User.user_name.ilike(term),
+                models.User.full_name.ilike(term),
+            )
+        )
+    return q
+
+
+def get_users(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    search: str | None = None,
+    role: models.UserRole | None = None,
+    has_student_profile: bool | None = None,
+):
+    page, page_size, offset = normalize_pagination(page, page_size)
+    q = _users_query(db, search, role, has_student_profile)
+    total = q.count()
+    rows = q.order_by(models.User.id.desc()).offset(offset).limit(page_size).all()
+    return make_paged(rows, total, page, page_size)
 
 
 def get_user_by_id(db: Session, user_id: int):

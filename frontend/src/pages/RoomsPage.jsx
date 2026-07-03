@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { getRooms, createRoom, updateRoom, deleteRoom, getExams, getUsers } from '../api';
+import { getRooms, createRoom, deleteRoom, getExams, getUsers } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
 import DateTimeField from '../components/DateTimeField';
+import Pagination from '../components/Pagination';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useAuth } from '../context/AuthContext';
 
 function toApiDatetime(d) {
@@ -41,21 +44,44 @@ export default function RoomsPage() {
   const [exams,    setExams]    = useState([]);
   const [proctors, setProctors] = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
   const [form,     setForm]     = useState(emptyForm);
   const [saving,   setSaving]   = useState(false);
   const [confirm,  setConfirm]  = useState(null);
   const [filterExam, setFilterExam] = useState('ALL');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search);
 
-  const loadAll = async () => {
+  const loadMeta = async () => {
+    try {
+      const [eRes, uRes] = await Promise.all([
+        getExams({ page_size: 100 }),
+        getUsers({ page_size: 100 }),
+      ]);
+      setExams(eRes.data.items);
+      setProctors(uRes.data.items.filter((u) => u.role === 'PROCTOR' || u.role === 'ADMIN'));
+    } catch {
+      setExams([]);
+      setProctors([]);
+    }
+  };
+
+  const loadRooms = async () => {
     setLoading(true);
     try {
-      const [rRes, eRes, uRes] = await Promise.all([getRooms(), getExams(), getUsers()]);
-      setRooms(rRes.data);
-      setExams(eRes.data);
-      setProctors(uRes.data.filter((u) => u.role === 'PROCTOR' || u.role === 'ADMIN'));
+      const rRes = await getRooms({
+        page,
+        page_size: pageSize,
+        search: debouncedSearch || undefined,
+        exam_id: filterExam !== 'ALL' ? Number(filterExam) : undefined,
+      });
+      setRooms(rRes.data.items);
+      setTotal(rRes.data.total);
+      setTotalPages(rRes.data.total_pages);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Không tải được dữ liệu');
     } finally {
@@ -63,31 +89,23 @@ export default function RoomsPage() {
     }
   };
 
-  useEffect(() => { loadAll(); }, []);
+  const loadAll = async () => {
+    await Promise.all([loadRooms(), loadMeta()]);
+  };
+
+  useEffect(() => { loadMeta(); }, []);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterExam]);
+  useEffect(() => { loadRooms(); }, [page, pageSize, debouncedSearch, filterExam]);
 
   const examMap  = Object.fromEntries(exams.map((e)  => [e.id, e]));
   const userMap  = Object.fromEntries(proctors.map((u) => [u.id, u]));
 
   const openCreate = () => {
-    setEditingId(null);
     setForm(emptyForm);
     setModalOpen(true);
   };
 
-  const openEdit = (room) => {
-    setEditingId(room.id);
-    setForm({
-      exam_id:    String(room.exam_id),
-      room_name:  room.room_name,
-      start_time: room.start_time ? new Date(room.start_time) : null,
-      end_time:   room.end_time   ? new Date(room.end_time)   : null,
-      exam_url:   room.exam_url   || '',
-      proctor_id: room.proctor_id ? String(room.proctor_id) : '',
-    });
-    setModalOpen(true);
-  };
-
-  const closeModal = () => { setModalOpen(false); setEditingId(null); setForm(emptyForm); };
+  const closeModal = () => { setModalOpen(false); setForm(emptyForm); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -107,13 +125,8 @@ export default function RoomsPage() {
         exam_url:   form.exam_url.trim() || null,
         proctor_id: form.proctor_id ? Number(form.proctor_id) : null,
       };
-      if (editingId) {
-        await updateRoom(editingId, payload);
-        toast.success('Cập nhật phòng thi thành công');
-      } else {
-        await createRoom(payload);
-        toast.success('Thêm phòng thi thành công');
-      }
+      await createRoom(payload);
+      toast.success('Thêm phòng thi thành công');
       closeModal();
       loadAll();
     } catch (err) {
@@ -142,12 +155,6 @@ export default function RoomsPage() {
       },
     });
   };
-
-  const displayed = rooms.filter((r) => {
-    const q = search.trim().toLowerCase();
-    return (filterExam === 'ALL' || String(r.exam_id) === filterExam)
-      && (!q || r.room_name.toLowerCase().includes(q));
-  });
 
   return (
     <div className="text-left w-full">
@@ -194,15 +201,13 @@ export default function RoomsPage() {
               : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:border-[var(--accent-border)]'
           }`}
         >
-          Tất cả ({rooms.length})
+          Tất cả
         </button>
-        {exams.map((exam) => {
-          const count = rooms.filter((r) => r.exam_id === exam.id).length;
-          return (
-            <button
-              key={exam.id}
-              type="button"
-              onClick={() => setFilterExam(String(exam.id))}
+        {exams.map((exam) => (
+          <button
+            key={exam.id}
+            type="button"
+            onClick={() => setFilterExam(String(exam.id))}
               className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium border transition-all max-w-[180px] truncate ${
                 filterExam === String(exam.id)
                   ? 'bg-[var(--primary-600)] text-white border-[var(--primary-600)]'
@@ -210,21 +215,21 @@ export default function RoomsPage() {
               }`}
               title={exam.name}
             >
-              {exam.name.length > 28 ? exam.name.slice(0, 28) + '…' : exam.name} ({count})
+              {exam.name.length > 28 ? exam.name.slice(0, 28) + '…' : exam.name}
             </button>
-          );
-        })}
+        ))}
       </div>
 
       {/* Table */}
       <div className="card overflow-hidden p-0">
         {loading ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">Đang tải...</p>
-        ) : displayed.length === 0 ? (
+        ) : rooms.length === 0 ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">
-            {rooms.length === 0 ? 'Chưa có phòng thi nào.' : 'Không tìm thấy kết quả phù hợp.'}
+            {total === 0 && !debouncedSearch && filterExam === 'ALL' ? 'Chưa có phòng thi nào.' : 'Không tìm thấy kết quả phù hợp.'}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -236,11 +241,12 @@ export default function RoomsPage() {
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-h)]">Kết thúc</th>
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-h)]">Giám thị</th>
                   <th className="text-left px-4 py-3 font-medium text-[var(--text-h)]">Link thi</th>
+                  <th className="text-left px-4 py-3 font-medium text-[var(--text-h)]">Cần duyệt</th>
                   <th className="text-right px-4 py-3 font-medium text-[var(--text-h)]">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((room) => {
+                {rooms.map((room) => {
                   const exam = examMap[room.exam_id];
                   const proctor = userMap[room.proctor_id];
                   return (
@@ -249,7 +255,11 @@ export default function RoomsPage() {
                       className="border-b border-[var(--border-light)] hover:bg-[var(--accent-bg)]/40 transition"
                     >
                       <td className="px-4 py-3 text-[var(--text-muted)]">{room.id}</td>
-                      <td className="px-4 py-3 font-medium text-[var(--text-h)]">{room.room_name}</td>
+                      <td className="px-4 py-3 font-medium text-[var(--text-h)]">
+                        <Link to={`/rooms/${room.id}`} className="text-[var(--primary-600)] hover:text-[var(--primary-800)] hover:underline">
+                          {room.room_name}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 max-w-[160px]">
                         {exam ? (
                           <div>
@@ -291,14 +301,25 @@ export default function RoomsPage() {
                           <span className="text-[var(--text-muted)] text-xs">—</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {room.needs_review > 0 ? (
+                          <Link
+                            to={`/rooms/${room.id}?tab=attendance&status=NEEDS_REVIEW`}
+                            className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--accent-bg)] text-[var(--primary-700)] hover:bg-[var(--accent-border)]/30 no-underline"
+                          >
+                            {room.needs_review} lượt
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-[var(--text-muted)]">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(room)}
-                          className="text-[var(--primary-600)] hover:text-[var(--primary-800)] font-medium mr-3"
+                        <Link
+                          to={`/rooms/${room.id}`}
+                          className="text-[var(--primary-600)] hover:text-[var(--primary-800)] font-medium mr-3 no-underline"
                         >
-                          Sửa
-                        </button>
+                          Xem
+                        </Link>
                         {isAdmin && (
                           <button
                             type="button"
@@ -315,6 +336,15 @@ export default function RoomsPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+          />
+          </>
         )}
       </div>
 
@@ -333,7 +363,7 @@ export default function RoomsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-[var(--text-h)] m-0 mb-5">
-              {editingId ? 'Sửa phòng thi' : 'Thêm phòng thi mới'}
+              Thêm phòng thi mới
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -407,7 +437,7 @@ export default function RoomsPage() {
                   <option value="">-- Chưa phân công --</option>
                   {proctors.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.full_name} ({u.user_name})
+                      {u.full_name}
                     </option>
                   ))}
                 </select>
@@ -432,7 +462,7 @@ export default function RoomsPage() {
                   Hủy
                 </button>
                 <button type="submit" className="btn-primary-soft px-4 py-2 text-sm" disabled={saving}>
-                  {saving ? 'Đang lưu...' : editingId ? 'Cập nhật' : 'Thêm mới'}
+                  {saving ? 'Đang lưu...' : 'Thêm mới'}
                 </button>
               </div>
             </form>

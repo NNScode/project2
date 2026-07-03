@@ -47,3 +47,7 @@ class CheckInRead(BaseModel):
     tolerance: float
     is_same_person: bool
     message: str
+    attempt_count: int = 0
+    attempts_remaining: int = 0
+    kept_previous_best: bool = False
+    exam_url: Optional[str] = None

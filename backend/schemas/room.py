@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RoomBase(BaseModel):
@@ -27,6 +27,7 @@ class RoomUpdate(BaseModel):
 
 class RoomRead(RoomBase):
     id: int
+    needs_review: int = Field(0, ge=0)
 
     class Config:
         from_attributes = True

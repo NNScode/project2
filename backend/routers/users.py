@@ -1,9 +1,9 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
 from schemas.user import UserCreate, UserRead, UserUpdate
+from schemas.common import PaginatedResponse
 from crud.user import get_users, get_user_by_id, create_user, update_user, delete_user
 import models
 
@@ -15,13 +15,25 @@ def _require_admin_or_proctor(user: models.User):
         raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 
-@router.get("/", response_model=List[UserRead])
+@router.get("/", response_model=PaginatedResponse[UserRead])
 def list_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str | None = None,
+    role: models.UserRole | None = None,
+    has_student_profile: bool | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_admin_or_proctor(current_user)
-    return get_users(db)
+    return get_users(
+        db,
+        page=page,
+        page_size=page_size,
+        search=search,
+        role=role,
+        has_student_profile=has_student_profile,
+    )
 
 
 @router.get("/{user_id}", response_model=UserRead)

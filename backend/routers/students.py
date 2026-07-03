@@ -1,9 +1,10 @@
 from typing import List
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user
 from schemas.student import StudentCreate, StudentUpdate, StudentRead, StudentExamContextRead
+from schemas.common import PaginatedResponse
 from crud.student import (
     get_students,
     get_student_by_id,
@@ -12,6 +13,7 @@ from crud.student import (
     update_student,
     delete_student,
     save_student_cccd_image,
+    delete_student_cccd_image,
 )
 import models
 
@@ -23,13 +25,16 @@ def _require_staff(user: models.User):
         raise HTTPException(status_code=403, detail="Không có quyền truy cập")
 
 
-@router.get("/", response_model=List[StudentRead])
+@router.get("/", response_model=PaginatedResponse[StudentRead])
 def list_students(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    search: str | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     _require_staff(current_user)
-    return get_students(db)
+    return get_students(db, page=page, page_size=page_size, search=search)
 
 
 @router.get("/me/exam-context", response_model=StudentExamContextRead)
@@ -105,6 +110,20 @@ async def upload_cccd_image(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    if not student:
+        raise HTTPException(status_code=404, detail="Không tìm thấy thí sinh")
+    return student
+
+
+@router.delete("/{student_id}/cccd-image", response_model=StudentRead)
+def remove_cccd_image(
+    student_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Chỉ quản trị viên mới được xóa ảnh CCCD")
+    student = delete_student_cccd_image(db, student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Không tìm thấy thí sinh")
     return student

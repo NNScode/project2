@@ -1,19 +1,20 @@
 from datetime import datetime
 
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import models
+from schemas.common import make_paged, normalize_pagination
 from schemas.attendance import AttendanceCreate, AttendanceUpdate
 from core.face import (
-    DEFAULT_TOLERANCE,
+    compare_face_distance,
     extract_encoding_from_portrait,
-    is_same_person,
 )
-from core.uploads import save_checkin_image, validate_image
+from core.uploads import delete_image_by_url, save_checkin_image, validate_image
 from crud.student import get_student_model_by_user_id
 
-LIVENESS_REVIEW_THRESHOLD = 0.70
-MATCH_REVIEW_DISTANCE = 0.35
+LIVENESS_MIN_THRESHOLD = 0.70
+MATCH_FAILED_BELOW = 0.45
+MATCH_SUCCESS_ABOVE = 0.55
 
 
 def _to_read(rec: models.AttendanceRecord) -> dict:
@@ -33,7 +34,13 @@ def _to_read(rec: models.AttendanceRecord) -> dict:
     }
 
 
-def get_attendance_records(db: Session, proctor_id: int | None = None):
+def _attendance_query(
+    db: Session,
+    proctor_id: int | None = None,
+    search: str | None = None,
+    status: models.AttendanceStatus | None = None,
+    room_id: int | None = None,
+):
     q = (
         db.query(models.AttendanceRecord)
         .options(
@@ -41,10 +48,44 @@ def get_attendance_records(db: Session, proctor_id: int | None = None):
             joinedload(models.AttendanceRecord.room),
         )
     )
+    if proctor_id is not None or room_id is not None or search:
+        q = q.join(models.Room, models.AttendanceRecord.room_id == models.Room.id)
     if proctor_id is not None:
-        q = q.join(models.Room).filter(models.Room.proctor_id == proctor_id)
-    rows = q.order_by(models.AttendanceRecord.id.desc()).all()
-    return [_to_read(r) for r in rows]
+        q = q.filter(models.Room.proctor_id == proctor_id)
+    if room_id is not None:
+        q = q.filter(models.AttendanceRecord.room_id == room_id)
+    if status is not None:
+        q = q.filter(models.AttendanceRecord.status == status)
+    if search:
+        term = f"%{search.strip()}%"
+        q = (
+            q.join(models.Student, models.AttendanceRecord.student_id == models.Student.id)
+            .join(models.User, models.Student.user_id == models.User.id)
+            .filter(
+                or_(
+                    models.Student.student_number.ilike(term),
+                    models.User.full_name.ilike(term),
+                    models.Room.room_name.ilike(term),
+                )
+            )
+        )
+    return q
+
+
+def get_attendance_records(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    proctor_id: int | None = None,
+    search: str | None = None,
+    status: models.AttendanceStatus | None = None,
+    room_id: int | None = None,
+):
+    page, page_size, offset = normalize_pagination(page, page_size)
+    q = _attendance_query(db, proctor_id, search, status, room_id)
+    total = q.count()
+    rows = q.order_by(models.AttendanceRecord.id.desc()).offset(offset).limit(page_size).all()
+    return make_paged([_to_read(r) for r in rows], total, page, page_size)
 
 
 def get_attendance_by_id(db: Session, record_id: int):
@@ -60,12 +101,38 @@ def get_attendance_by_id(db: Session, record_id: int):
     return _to_read(rec) if rec else None
 
 
-def _resolve_status(same_person: bool, distance: float, liveness_score: float | None) -> models.AttendanceStatus:
-    if not same_person:
+CHECKIN_MAX_ATTEMPTS = 3
+
+
+def _status_rank(status: models.AttendanceStatus) -> int:
+    order = {
+        models.AttendanceStatus.SUCCESS: 3,
+        models.AttendanceStatus.NEEDS_REVIEW: 2,
+        models.AttendanceStatus.PENDING: 1,
+        models.AttendanceStatus.FAILED: 0,
+    }
+    return order.get(status, 0)
+
+
+def _is_better_attempt(
+    old_match: float | None,
+    old_status: models.AttendanceStatus | None,
+    new_match: float,
+    new_status: models.AttendanceStatus,
+) -> bool:
+    if old_match is None:
+        return True
+    if new_match > old_match:
+        return True
+    if new_match == old_match and _status_rank(new_status) > _status_rank(old_status or models.AttendanceStatus.FAILED):
+        return True
+    return False
+
+
+def _resolve_status(match_score: float) -> models.AttendanceStatus:
+    if match_score < MATCH_FAILED_BELOW:
         return models.AttendanceStatus.FAILED
-    if distance > MATCH_REVIEW_DISTANCE:
-        return models.AttendanceStatus.NEEDS_REVIEW
-    if liveness_score is not None and liveness_score < LIVENESS_REVIEW_THRESHOLD:
+    if match_score <= MATCH_SUCCESS_ABOVE:
         return models.AttendanceStatus.NEEDS_REVIEW
     return models.AttendanceStatus.SUCCESS
 
@@ -117,12 +184,27 @@ def student_check_in(
     if existing_success:
         raise ValueError("Bạn đã điểm danh thành công")
 
+    existing_review = (
+        db.query(models.AttendanceRecord)
+        .filter(
+            models.AttendanceRecord.student_id == student.id,
+            models.AttendanceRecord.room_id == room_id,
+            models.AttendanceRecord.status == models.AttendanceStatus.NEEDS_REVIEW,
+        )
+        .first()
+    )
+    if existing_review:
+        raise ValueError("Đã ghi nhận — chờ giám thị duyệt")
+
     ext = validate_image(content_type, len(image_bytes))
+    if liveness_score is None or liveness_score < LIVENESS_MIN_THRESHOLD:
+        raise ValueError("Liveness chưa đạt — nháy mắt lại")
+
     probe = extract_encoding_from_portrait(image_bytes)
-    same, distance = is_same_person(student.face_vector, probe)
+    distance = compare_face_distance(student.face_vector, probe)
     match_score = round(max(0.0, 1.0 - distance), 4)
-    status = _resolve_status(same, distance, liveness_score)
-    image_url = save_checkin_image(student.id, room_id, image_bytes, ext)
+    status = _resolve_status(match_score)
+    same = match_score >= MATCH_FAILED_BELOW
 
     record = (
         db.query(models.AttendanceRecord)
@@ -133,41 +215,67 @@ def student_check_in(
         .order_by(models.AttendanceRecord.id.desc())
         .first()
     )
-    if record and record.status != models.AttendanceStatus.SUCCESS:
-        record.status = status
-        record.check_in_time = now
-        record.captured_image_url = image_url
-        record.liveness_score = liveness_score
-        record.match_score = match_score
+
+    if record and (record.check_in_attempt_count or 0) >= CHECKIN_MAX_ATTEMPTS:
+        raise ValueError("Đã hết 3 lần điểm danh — liên hệ giám thị")
+
+    next_attempt = (record.check_in_attempt_count or 0) + 1 if record else 1
+    kept_previous_best = False
+
+    if record is None or _is_better_attempt(record.match_score, record.status, match_score, status):
+        image_url = save_checkin_image(student.id, room_id, image_bytes, ext)
+        if record:
+            if record.captured_image_url and record.captured_image_url != image_url:
+                delete_image_by_url(record.captured_image_url)
+            record.status = status
+            record.check_in_time = now
+            record.captured_image_url = image_url
+            record.liveness_score = liveness_score
+            record.match_score = match_score
+            record.check_in_attempt_count = next_attempt
+        else:
+            record = models.AttendanceRecord(
+                room_id=room_id,
+                student_id=student.id,
+                status=status,
+                check_in_time=now,
+                captured_image_url=image_url,
+                liveness_score=liveness_score,
+                match_score=match_score,
+                check_in_attempt_count=next_attempt,
+            )
+            db.add(record)
     else:
-        record = models.AttendanceRecord(
-            room_id=room_id,
-            student_id=student.id,
-            status=status,
-            check_in_time=now,
-            captured_image_url=image_url,
-            liveness_score=liveness_score,
-            match_score=match_score,
-        )
-        db.add(record)
+        kept_previous_best = True
+        record.check_in_attempt_count = next_attempt
 
     db.commit()
     db.refresh(record)
 
+    attempts_remaining = max(0, CHECKIN_MAX_ATTEMPTS - record.check_in_attempt_count)
     messages = {
         models.AttendanceStatus.SUCCESS: "Điểm danh thành công",
         models.AttendanceStatus.NEEDS_REVIEW: "Đã ghi nhận — chờ giám thị duyệt",
         models.AttendanceStatus.FAILED: "Không khớp khuôn mặt — điểm danh thất bại",
     }
+    if kept_previous_best:
+        message = "Kết quả lần này thấp hơn — giữ kết quả tốt nhất trước đó"
+    else:
+        message = messages.get(record.status, "Đã ghi nhận")
+
     return {
         "id": record.id,
         "status": record.status,
-        "match_score": match_score,
-        "liveness_score": liveness_score,
+        "match_score": record.match_score,
+        "liveness_score": record.liveness_score,
         "distance": round(distance, 4),
-        "tolerance": DEFAULT_TOLERANCE,
+        "tolerance": MATCH_SUCCESS_ABOVE,
         "is_same_person": same,
-        "message": messages.get(status, "Đã ghi nhận"),
+        "message": message,
+        "attempt_count": record.check_in_attempt_count,
+        "attempts_remaining": attempts_remaining,
+        "kept_previous_best": kept_previous_best,
+        "exam_url": room.exam_url if record.status == models.AttendanceStatus.SUCCESS else None,
     }
 
 

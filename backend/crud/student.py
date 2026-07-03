@@ -1,7 +1,9 @@
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import or_
 from datetime import datetime
 import models
 from schemas.student import StudentCreate, StudentUpdate
+from schemas.common import make_paged, normalize_pagination
 from core.face import extract_face_vector
 from core.uploads import delete_image_by_url, save_student_image, validate_image
 
@@ -19,14 +21,32 @@ def _to_read(student: models.Student) -> dict:
     }
 
 
-def get_students(db: Session):
-    rows = (
-        db.query(models.Student)
-        .options(joinedload(models.Student.user))
-        .order_by(models.Student.id.desc())
-        .all()
-    )
-    return [_to_read(s) for s in rows]
+def _students_query(db: Session, search: str | None = None):
+    q = db.query(models.Student).options(joinedload(models.Student.user))
+    if search:
+        term = f"%{search.strip()}%"
+        q = q.join(models.User).filter(
+            or_(
+                models.Student.student_number.ilike(term),
+                models.Student.cccd_number.ilike(term),
+                models.User.full_name.ilike(term),
+                models.User.user_name.ilike(term),
+            )
+        )
+    return q
+
+
+def get_students(
+    db: Session,
+    page: int = 1,
+    page_size: int = 20,
+    search: str | None = None,
+):
+    page, page_size, offset = normalize_pagination(page, page_size)
+    q = _students_query(db, search)
+    total = q.count()
+    rows = q.order_by(models.Student.id.desc()).offset(offset).limit(page_size).all()
+    return make_paged([_to_read(s) for s in rows], total, page, page_size)
 
 
 def get_student_by_id(db: Session, student_id: int):
@@ -95,6 +115,17 @@ def save_student_cccd_image(
     return get_student_by_id(db, student_id)
 
 
+def delete_student_cccd_image(db: Session, student_id: int):
+    student = get_student_model(db, student_id)
+    if not student:
+        return None
+    delete_image_by_url(student.cccd_image_url)
+    student.cccd_image_url = None
+    student.face_vector = None
+    db.commit()
+    return get_student_by_id(db, student_id)
+
+
 def delete_student(db: Session, student_id: int) -> bool:
     student = get_student_model(db, student_id)
     if not student:
@@ -151,8 +182,9 @@ def get_student_exam_context(db: Session, user_id: int):
             "exam_name": exam.name if exam else f"Kỳ thi #{room.exam_id}",
             "start_time": room.start_time,
             "end_time": room.end_time,
-            "exam_url": room.exam_url,
+            "exam_url": room.exam_url if already_ok else None,
             "attendance_status": att_status,
+            "check_in_attempt_count": record.check_in_attempt_count if record else 0,
             "can_check_in": in_window and has_face and not already_ok,
         })
 

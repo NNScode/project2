@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getUsers, createUser, updateUser, deleteUser } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
+import Pagination from '../components/Pagination';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
 const ROLES = [
   { value: 'ADMIN', label: 'Quản trị' },
@@ -25,6 +27,10 @@ const emptyForm = {
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -32,12 +38,20 @@ export default function UsersPage() {
   const [confirm, setConfirm] = useState(null);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('ALL');
+  const debouncedSearch = useDebouncedValue(search);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await getUsers();
-      setUsers(res.data);
+      const res = await getUsers({
+        page,
+        page_size: pageSize,
+        search: debouncedSearch || undefined,
+        role: filterRole !== 'ALL' ? filterRole : undefined,
+      });
+      setUsers(res.data.items);
+      setTotal(res.data.total);
+      setTotalPages(res.data.total_pages);
     } catch (e) {
       toast.error(e.response?.data?.detail || 'Không tải được danh sách');
     } finally {
@@ -45,9 +59,8 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
+  useEffect(() => { setPage(1); }, [debouncedSearch, filterRole]);
+  useEffect(() => { loadUsers(); }, [page, pageSize, debouncedSearch, filterRole]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -129,15 +142,6 @@ export default function UsersPage() {
 
   const roleLabel = (role) => ROLES.find((r) => r.value === role)?.label || role;
 
-  const displayed = users.filter((u) => {
-    const q = search.trim().toLowerCase();
-    const matchSearch = !q
-      || u.user_name.toLowerCase().includes(q)
-      || u.full_name.toLowerCase().includes(q);
-    const matchRole = filterRole === 'ALL' || u.role === filterRole;
-    return matchSearch && matchRole;
-  });
-
   return (
     <div className="text-left w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -182,11 +186,12 @@ export default function UsersPage() {
       <div className="card overflow-hidden p-0">
         {loading ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">Đang tải...</p>
-        ) : displayed.length === 0 ? (
+        ) : users.length === 0 ? (
           <p className="p-8 text-center text-[var(--text-muted)] text-sm m-0">
-            {users.length === 0 ? 'Chưa có người dùng.' : 'Không tìm thấy kết quả phù hợp.'}
+            {total === 0 && !debouncedSearch && filterRole === 'ALL' ? 'Chưa có người dùng.' : 'Không tìm thấy kết quả phù hợp.'}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -199,7 +204,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {displayed.map((u) => (
+                {users.map((u) => (
                   <tr
                     key={u.id}
                     className="border-b border-[var(--border-light)] hover:bg-[var(--accent-bg)]/40 transition"
@@ -235,6 +240,15 @@ export default function UsersPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+          />
+          </>
         )}
       </div>
 
