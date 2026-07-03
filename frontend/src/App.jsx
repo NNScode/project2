@@ -6,7 +6,11 @@ import Dashboard from './components/Dashboard';
 import UsersPage from './pages/UsersPage';
 import ExamsPage from './pages/ExamsPage';
 import RoomsPage from './pages/RoomsPage';
+import StudentsPage from './pages/StudentsPage';
+import RoomStudentsPage from './pages/RoomStudentsPage';
+import AttendancePage from './pages/AttendancePage';
 import LivenessDemo from './components/LivenessDemo';
+import { NotFoundPage, ForbiddenPage } from './pages/ErrorPages';
 
 function LoadingScreen() {
   return (
@@ -16,12 +20,12 @@ function LoadingScreen() {
   );
 }
 
-/** Bảo vệ route: chưa đăng nhập → /login, sai role → /dashboard */
+/** Bảo vệ route: chưa đăng nhập → /login, sai role → /forbidden */
 function ProtectedRoute({ children, roles }) {
   const { user, loading, isAuthenticated } = useAuth();
   if (loading) return <LoadingScreen />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user?.role)) return <Navigate to="/dashboard" replace />;
+  if (roles && !roles.includes(user?.role)) return <Navigate to="/forbidden" replace />;
   return children;
 }
 
@@ -32,10 +36,12 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Trang đăng nhập */}
-      <Route
-        path="/login"
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
-      />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route path="/forbidden" element={<ForbiddenPage />} />
+      <Route path="/not-found" element={<NotFoundPage />} />
+      {/* Alias số HTTP — redirect sang URL semantic */}
+      <Route path="/403" element={<Navigate to="/forbidden" replace />} />
+      <Route path="/404" element={<Navigate to="/not-found" replace />} />
 
       {/* Layout chung — bảo vệ tất cả route con */}
       <Route
@@ -58,12 +64,26 @@ function AppRoutes() {
           path="/users"
           element={<ProtectedRoute roles={['ADMIN']}><UsersPage /></ProtectedRoute>}
         />
-        <Route path="/liveness" element={<LivenessDemo />} />
+        <Route
+          path="/students"
+          element={<ProtectedRoute roles={['ADMIN']}><StudentsPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/room-students"
+          element={<ProtectedRoute roles={['ADMIN']}><RoomStudentsPage /></ProtectedRoute>}
+        />
+        <Route
+          path="/attendance"
+          element={<ProtectedRoute roles={['ADMIN', 'PROCTOR']}><AttendancePage /></ProtectedRoute>}
+        />
+        <Route
+          path="/liveness"
+          element={<ProtectedRoute roles={['STUDENTS']}><LivenessDemo /></ProtectedRoute>}
+        />
       </Route>
 
-      {/* Fallback */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

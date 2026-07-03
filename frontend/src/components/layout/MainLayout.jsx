@@ -6,11 +6,14 @@ import PageContent from './PageContent';
 import { useAuth } from '../../context/AuthContext';
 
 const PAGE_META = {
-  '/dashboard': { title: 'Tổng quan',   subtitle: 'Thống kê FacePass' },
-  '/exams':     { title: 'Kỳ thi',       subtitle: 'Quản lý kỳ thi' },
-  '/rooms':     { title: 'Phòng thi',    subtitle: 'Quản lý phòng thi & giám thị' },
-  '/users':     { title: 'Người dùng',   subtitle: 'Quản lý tài khoản hệ thống' },
-  '/liveness':  { title: 'Điểm danh',    subtitle: 'Xác thực khuôn mặt & Liveness' },
+  '/dashboard':     { title: 'Tổng quan',       subtitle: 'Trang chủ FacePass' },
+  '/exams':         { title: 'Kỳ thi',           subtitle: 'Quản lý kỳ thi' },
+  '/rooms':         { title: 'Phòng thi',        subtitle: 'Quản lý phòng thi & giám thị' },
+  '/users':         { title: 'Người dùng',       subtitle: 'Quản lý tài khoản hệ thống' },
+  '/students':      { title: 'Thí sinh',         subtitle: 'Quản lý hồ sơ thí sinh' },
+  '/room-students': { title: 'Gán phòng',        subtitle: 'Phân bổ thí sinh theo phòng thi' },
+  '/attendance':    { title: 'Duyệt điểm danh',  subtitle: 'Xem và xử lý bản ghi điểm danh' },
+  '/liveness':      { title: 'Điểm danh',        subtitle: 'Xác thực khuôn mặt & Liveness' },
 };
 
 export default function MainLayout() {

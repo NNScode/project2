@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react';
-import Flatpickr from 'react-flatpickr';
-import { Vietnamese } from 'flatpickr/dist/l10n/vn.js';
-import 'flatpickr/dist/flatpickr.min.css';
 import { toast } from 'sonner';
 import { getRooms, createRoom, updateRoom, deleteRoom, getExams, getUsers } from '../api';
 import ConfirmModal from '../components/ConfirmModal';
+import DateTimeField from '../components/DateTimeField';
+import { useAuth } from '../context/AuthContext';
 
-const FP_OPTIONS = {
-  enableTime: true,
-  dateFormat: 'd/m/Y H:i',
-  time_24hr: true,
-  minuteIncrement: 15,
-  locale: Vietnamese,
-  appendTo: document.body,
-};
+function toApiDatetime(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
+}
 
 const STATUS_BADGE = {
   FUTURE: 'bg-[var(--accent-bg)] text-[var(--primary-700)]',
@@ -40,6 +35,8 @@ const emptyForm = {
 };
 
 export default function RoomsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [rooms,    setRooms]    = useState([]);
   const [exams,    setExams]    = useState([]);
   const [proctors, setProctors] = useState([]);
@@ -105,8 +102,8 @@ export default function RoomsPage() {
       const payload = {
         exam_id:    Number(form.exam_id),
         room_name:  form.room_name.trim(),
-        start_time: form.start_time.toISOString(),
-        end_time:   form.end_time.toISOString(),
+        start_time: toApiDatetime(form.start_time),
+        end_time: toApiDatetime(form.end_time),
         exam_url:   form.exam_url.trim() || null,
         proctor_id: form.proctor_id ? Number(form.proctor_id) : null,
       };
@@ -149,7 +146,7 @@ export default function RoomsPage() {
   const displayed = rooms.filter((r) => {
     const q = search.trim().toLowerCase();
     return (filterExam === 'ALL' || String(r.exam_id) === filterExam)
-      && (!q || r.name.toLowerCase().includes(q));
+      && (!q || r.room_name.toLowerCase().includes(q));
   });
 
   return (
@@ -302,13 +299,15 @@ export default function RoomsPage() {
                         >
                           Sửa
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(room)}
-                          className="text-red-500 hover:text-red-700 font-medium"
-                        >
-                          Xóa
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(room)}
+                            className="text-red-500 hover:text-red-700 font-medium"
+                          >
+                            Xóa
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -329,7 +328,8 @@ export default function RoomsPage() {
           role="presentation"
         >
           <div
-            className="card w-full max-w-lg p-6 shadow-[var(--shadow-lg)] max-h-[90vh] overflow-y-auto"
+            id="room-modal"
+            className="card w-full max-w-lg p-6 shadow-[var(--shadow-lg)] max-h-[90vh] overflow-y-auto overflow-x-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-[var(--text-h)] m-0 mb-5">
@@ -370,31 +370,26 @@ export default function RoomsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-h)] mb-1.5">
                     Bắt đầu <span className="text-red-500">*</span>
                   </label>
-                  <Flatpickr
+                  <DateTimeField
                     value={form.start_time}
-                    onChange={([date]) => setForm({ ...form, start_time: date ?? null })}
-                    options={FP_OPTIONS}
-                    placeholder="Chọn ngày & giờ"
+                    onChange={(date) => setForm((prev) => ({ ...prev, start_time: date }))}
                     disabled={saving}
-                    className="input-field w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] text-sm"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[var(--text-h)] mb-1.5">
                     Kết thúc <span className="text-red-500">*</span>
                   </label>
-                  <Flatpickr
+                  <DateTimeField
                     value={form.end_time}
-                    onChange={([date]) => setForm({ ...form, end_time: date ?? null })}
-                    options={{ ...FP_OPTIONS, minDate: form.start_time ?? undefined }}
-                    placeholder="Chọn ngày & giờ"
+                    onChange={(date) => setForm((prev) => ({ ...prev, end_time: date }))}
+                    minDate={form.start_time ?? undefined}
                     disabled={saving}
-                    className="input-field w-full px-3 py-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] text-sm"
                   />
                 </div>
               </div>

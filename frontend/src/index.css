@@ -1,4 +1,5 @@
 @import './styles/theme.css';
+@import 'react-datepicker/dist/react-datepicker.css';
 
 @tailwind base;
 @tailwind components;
@@ -50,79 +51,110 @@ input[type="time"] {
   color-scheme: light;
 }
 
-/* ── flatpickr theme override ────────────────────────────── */
-.flatpickr-calendar {
+/* ── react-datepicker ────────────────────────────────────── */
+
+.react-datepicker-wrapper {
+  display: block;
+  width: 100%;
+}
+.react-datepicker {
   font-family: var(--sans);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
   background: var(--surface);
+  overflow: hidden;
 }
-.flatpickr-months,
-.flatpickr-weekdays {
-  background: var(--accent-bg);
+.react-datepicker__portal {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 10000;
+  overflow: hidden;
 }
-.flatpickr-month,
-.flatpickr-weekday {
-  color: var(--text-h) !important;
-  fill: var(--text-h) !important;
+#facepass-datepicker-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  overflow: hidden;
 }
-.flatpickr-day {
-  border-radius: 6px;
-  color: var(--text-h);
+#facepass-datepicker-portal > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: hidden;
 }
-.flatpickr-day:hover {
-  background: var(--accent-bg-strong);
-  border-color: var(--accent-border);
-  color: var(--primary-700);
+.react-datepicker__tab-loop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-.flatpickr-day.selected,
-.flatpickr-day.selected:hover {
-  background: var(--primary-600);
-  border-color: var(--primary-600);
-  color: white;
+.react-datepicker--stacked {
+  display: flex;
+  flex-direction: column;
+  width: 17.5rem;
+  max-width: calc(100vw - 2rem);
 }
-.flatpickr-day.today {
-  border-color: var(--primary-400);
+.react-datepicker--stacked .react-datepicker__month-container {
+  float: none;
+  width: 100%;
 }
-.flatpickr-time {
+.react-datepicker--compact {
+  font-size: 0.8125rem;
+}
+.react-datepicker--compact .react-datepicker__month-container {
+  background: var(--surface);
+}
+.react-datepicker--compact .react-datepicker__header {
+  padding-top: 6px;
+}
+.react-datepicker--compact .react-datepicker__current-month,
+.react-datepicker--compact .react-datepicker__day-name,
+.react-datepicker--compact .react-datepicker-time__header {
+  font-size: 0.8rem;
+}
+.react-datepicker--compact .react-datepicker__day {
+  width: 1.7rem;
+  line-height: 1.7rem;
+  margin: 0.12rem;
+}
+.react-datepicker__children-container {
+  clear: both;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.75rem;
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  box-sizing: border-box;
 }
-.flatpickr-time input {
-  color: var(--text-h);
-  background: var(--surface);
+.datepicker-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
 }
-.flatpickr-time input:hover,
-.flatpickr-time input:focus {
-  background: var(--accent-bg);
-}
-.numInputWrapper:hover {
-  background: var(--accent-bg);
-}
-.flatpickr-prev-month,
-.flatpickr-next-month {
-  fill: var(--text-muted) !important;
-}
-.flatpickr-prev-month:hover,
-.flatpickr-next-month:hover {
-  fill: var(--primary-600) !important;
-}
-
-/* ── react-datepicker theme override (giữ lại nếu dùng ở chỗ khác) ── */
-@import 'react-datepicker/dist/react-datepicker.css';
-
-.react-datepicker {
-  font-family: var(--sans);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  background: var(--surface);
+.datepicker-footer .btn-ghost,
+.datepicker-footer .btn-primary-soft {
+  flex-shrink: 0;
 }
 .react-datepicker__header {
   background: var(--accent-bg);
   border-bottom: 1px solid var(--border);
-  border-radius: var(--radius) var(--radius) 0 0;
+  border-radius: 0;
   padding-top: 10px;
 }
 .react-datepicker__current-month,
@@ -159,16 +191,40 @@ input[type="time"] {
 .react-datepicker__time-container {
   border-left: 1px solid var(--border);
   background: var(--surface);
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 .react-datepicker__time-container .react-datepicker__time {
   background: var(--surface);
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 .react-datepicker__time-container .react-datepicker__time-box {
   background: var(--surface);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.react-datepicker__input-time-container {
+  clear: both;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-sizing: border-box;
+}
+.react-datepicker__input-time-container .react-datepicker-time__caption {
+  color: var(--text-h);
+  font-size: 0.8rem;
+}
+.react-datepicker__input-time-container .react-datepicker-time__input input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-h);
+  font-family: var(--sans);
+  padding: 2px 6px;
 }
 .react-datepicker__time-list {
   background: var(--surface) !important;
-  height: 180px !important;
+  height: 154px !important;
   overflow-y: auto !important;
 }
 .react-datepicker__time-list-item {
